@@ -173,8 +173,8 @@ class DspManager(csdr.output, SdrSourceEventClient):
 
         write = writers[t]
         if t == "audio" or t == "hd_audio":
-            # Send empty audio frame as a "reset" command for resetting audio codec state
-            write(bytes([]))
+            # Send a "reset" command for resetting audio codec state
+            self.handler.write_codec_reset()
 
         threading.Thread(target=self.pump(read_fn, write), name="dsp_pump_{}".format(t)).start()
 

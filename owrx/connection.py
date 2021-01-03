@@ -352,6 +352,9 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
     def write_hd_audio(self, data):
         self.send(bytes([0x04]) + data)
 
+    def write_codec_reset(self):
+        self.send(bytes([0x05]))
+
     def write_s_meter_level(self, level):
         self.send({"type": "smeter", "value": level})
 

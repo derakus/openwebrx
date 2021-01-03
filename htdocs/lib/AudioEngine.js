@@ -267,13 +267,11 @@ AudioEngine.prototype.processAudio = function(data, resampler) {
 }
 
 AudioEngine.prototype.pushAudio = function(data) {
-    if (data.byteLength == 0) this.audioCodec.reset();
-    else this.processAudio(data, this.resampler);
+    this.processAudio(data, this.resampler);
 };
 
 AudioEngine.prototype.pushHdAudio = function(data) {
-    if (data.byteLength == 0) this.audioCodec.reset(); 
-    else this.processAudio(data, this.hdResampler);
+    this.processAudio(data, this.hdResampler);
 }
 
 AudioEngine.prototype.setCompression = function(compression) {

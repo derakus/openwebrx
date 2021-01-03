@@ -900,6 +900,9 @@ function on_ws_recv(evt) {
                 // hd audio data
                 audioEngine.pushHdAudio(data);
                 break;
+	    case 5:
+		audioEngine.audioCodec.reset();
+		break;
             default:
                 console.warn('unknown type of binary message: ' + type)
         }
