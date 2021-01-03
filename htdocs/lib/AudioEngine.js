@@ -245,7 +245,6 @@ AudioEngine.prototype.getSampleRate = function() {
 };
 
 AudioEngine.prototype.processAudio = function(data, resampler) {
-    if (!this.audioNode) return;
     this.audioBytes.add(data.byteLength);
     var buffer;
     if (this.compression === "adpcm") {
@@ -254,6 +253,7 @@ AudioEngine.prototype.processAudio = function(data, resampler) {
     } else {
         buffer = new Int16Array(data);
     }
+    if (!this.audioNode) { return; }
     buffer = resampler.process(buffer);
     if (this.audioNode.port) {
         // AudioWorklets supported
