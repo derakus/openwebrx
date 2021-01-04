@@ -51,5 +51,5 @@ Mode.prototype.isAvailable = function(){
         return Modes.features[r];
     }).reduce(function(a, b){
         return a && b;
-    }, true);
+    }, true); 
 };

@@ -13,6 +13,8 @@ Filter.prototype.getLimits = function() {
         max_bw = 100000;
     } else if (this.demodulator.get_secondary_demod() === 'packet') {
         max_bw = 12500;
+    } else if (this.demodulator.get_secondary_demod() === 'radiosonde') {
+        max_bw = 20000;
     } else {
         max_bw = (audioEngine.getOutputRate() / 2) - 1;
     }

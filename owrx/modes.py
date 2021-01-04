@@ -87,6 +87,7 @@ class Modes(object):
             service=True,
             squelch=False,
         ),
+        DigitalMode("radiosonde", "Radiosonde", underlying=["nfm"], bandpass=Bandpass(-10000,10000), requirements=["radiosonde"], squelch=False,),
         DigitalMode(
             "pocsag",
             "Pocsag",

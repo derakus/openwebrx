@@ -1068,6 +1068,15 @@ img.openwebrx-mirror-img
     text-align: center;
 }
 
+#openwebrx-panel-radiosonde-message .message {
+    width: 410px;
+    max-width: 410px;
+}
+
+#openwebrx-panel-radiosonde-message .basic {
+    width: 100%;
+}
+
 #openwebrx-panel-pocsag-message .address {
     width: 100px;
 }
@@ -1159,6 +1168,7 @@ img.openwebrx-mirror-img
 #openwebrx-panel-digimodes[data-mode="jt9"]    #openwebrx-digimode-content-container,
 #openwebrx-panel-digimodes[data-mode="ft4"]    #openwebrx-digimode-content-container,
 #openwebrx-panel-digimodes[data-mode="packet"] #openwebrx-digimode-content-container,
+#openwebrx-panel-digimodes[data-mode="radiosonde"] #openwebrx-digimode-content-container,
 #openwebrx-panel-digimodes[data-mode="pocsag"] #openwebrx-digimode-content-container,
 #openwebrx-panel-digimodes[data-mode="js8"]    #openwebrx-digimode-content-container,
 #openwebrx-panel-digimodes[data-mode="fst4"]   #openwebrx-digimode-content-container,
@@ -1169,6 +1179,7 @@ img.openwebrx-mirror-img
 #openwebrx-panel-digimodes[data-mode="jt9"]    #openwebrx-digimode-select-channel,
 #openwebrx-panel-digimodes[data-mode="ft4"]    #openwebrx-digimode-select-channel,
 #openwebrx-panel-digimodes[data-mode="packet"] #openwebrx-digimode-select-channel,
+#openwebrx-panel-digimodes[data-mode="radiosonde"] #openwebrx-digimode-select-channel,
 #openwebrx-panel-digimodes[data-mode="pocsag"] #openwebrx-digimode-select-channel,
 #openwebrx-panel-digimodes[data-mode="js8"]    #openwebrx-digimode-select-channel,
 #openwebrx-panel-digimodes[data-mode="fst4"]   #openwebrx-digimode-select-channel,
@@ -1183,6 +1194,7 @@ img.openwebrx-mirror-img
 #openwebrx-panel-digimodes[data-mode="jt9"]    #openwebrx-digimode-canvas-container,
 #openwebrx-panel-digimodes[data-mode="ft4"]    #openwebrx-digimode-canvas-container,
 #openwebrx-panel-digimodes[data-mode="packet"] #openwebrx-digimode-canvas-container,
+#openwebrx-panel-digimodes[data-mode="radiosonde"] #openwebrx-digimode-canvas-container,
 #openwebrx-panel-digimodes[data-mode="pocsag"] #openwebrx-digimode-canvas-container,
 #openwebrx-panel-digimodes[data-mode="js8"]    #openwebrx-digimode-canvas-container,
 #openwebrx-panel-digimodes[data-mode="fst4"]   #openwebrx-digimode-canvas-container,

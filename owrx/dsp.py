@@ -2,6 +2,7 @@ from owrx.meta import MetaParser
 from owrx.wsjt import WsjtParser
 from owrx.js8 import Js8Parser
 from owrx.aprs import AprsParser
+from owrx.radiosonde import RadiosondeParser
 from owrx.pocsag import PocsagParser
 from owrx.source import SdrSource, SdrSourceEventClient
 from owrx.property import PropertyStack, PropertyLayer
@@ -22,6 +23,7 @@ class DspManager(csdr.output, SdrSourceEventClient):
             "meta": MetaParser(self.handler),
             "wsjt_demod": WsjtParser(self.handler),
             "packet_demod": AprsParser(self.handler),
+            "radiosonde_demod": RadiosondeParser(self.handler),
             "pocsag_demod": PocsagParser(self.handler),
             "js8_demod": Js8Parser(self.handler),
         }

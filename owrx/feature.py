@@ -78,6 +78,7 @@ class FeatureDetector(object):
         "digital_voice_m17": ["m17_demod", "sox"],
         "wsjt-x": ["wsjtx", "sox"],
         "packet": ["direwolf", "sox"],
+        "radiosonde": ["radiosonde", "sox"],
         "pocsag": ["digiham", "sox"],
         "js8call": ["js8", "sox"],
         "drm": ["dream", "sox"],
@@ -444,6 +445,12 @@ class FeatureDetector(object):
         compile it from source.
         """
         return self.command_is_runnable("direwolf --help")
+
+    def has_radiosonde(self):
+        """
+        blabla
+        """
+        return self.command_is_runnable("owrx-sonde --help")
 
     def has_airspy_rx(self):
         """

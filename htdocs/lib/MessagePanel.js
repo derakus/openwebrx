@@ -209,6 +209,52 @@ $.fn.packetMessagePanel = function() {
     return this.data('panel');
 };
 
+function RadiosondeMessagePanel(el) {
+    MessagePanel.call(this, el);
+    this.initClearTimer();
+}
+
+RadiosondeMessagePanel.prototype = new MessagePanel();
+
+RadiosondeMessagePanel.prototype.render = function() {
+    $(this.el).append($(
+        '<table>' +
+            '<thead><tr>' +
+                '<th class="basic">Raw Message</th>' +
+                //'<th class="callsign">Callsign</th>' +
+                //'<th class="coord">Coord</th>' +
+                //'<th class="message">Comment</th>' +
+            '</tr></thead>' +
+            '<tbody></tbody>' +
+        '</table>'
+    ));
+};
+
+RadiosondeMessagePanel.prototype.pushMessage = function(msg) {
+    //divlog(JSON.stringify(msg));
+    var $b = $(this.el).find('tbody');
+
+    if (msg.type && msg.type === 'thirdparty' && msg.data) {
+        msg = msg.data;
+    }
+
+    rowcount = $(this.el).find('tbody tr').length;
+    if (rowcount > 1000) { $(this.el).find('tbody tr:first').remove(); }
+    $b.append($(
+	'<tr>' +
+	'<td class="basic">' + msg.raw + '</td>' +
+	'</tr>'
+    ));
+    $b.scrollTop($b[0].scrollHeight);
+};
+
+$.fn.radiosondeMessagePanel = function() {
+    if (!this.data('panel')) {
+        this.data('panel', new RadiosondeMessagePanel(this));
+    };
+    return this.data('panel');
+};
+
 PocsagMessagePanel = function(el) {
     MessagePanel.call(this, el);
     this.initClearTimer();

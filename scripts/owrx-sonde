@@ -1,0 +1,92 @@
+#!/usr/bin/python3
+import random
+import subprocess
+import sys
+import atexit
+import time
+import re
+
+if len(sys.argv)>1 and sys.argv[1] == "--help":
+    # Used by openwebrx to test availablility. Could be  more informative output...
+    print ("It works.")
+    exit(0)
+
+def launch_decoder(proclist):
+    # Launch sondemod wth random UDP port, and output to CSV
+    # For now, we use sondemod -v output (which is more detailed and more practical for interactive use)
+    # print("Starting sondemod")
+    random.seed(None)
+    port = random.randrange(50000,60000)
+    sondemodcmd = ["sondemod", "-C", "/tmp/sondemod-{port}".format(port=port), "-d", "-F", "-I", "OWEBRX",
+                   "-o", "{port}".format(port=port), "-p", "2", "-v"]
+    sondemod = subprocess.Popen(sondemodcmd, stdout=subprocess.PIPE)
+    proclist["sondemod"] = sondemod
+
+    # print("Starting sondeudp")
+    # Read audio data from stdin, forward to sondeudp 
+    sondeudpcmd = ["sondeudp", "-f", "48000", "-o", "/dev/stdin", "-c", "1", "-u", "127.0.0.1:%d" % port ]
+    sondeudp = subprocess.Popen(sondeudpcmd, stdin=sys.stdin, stdout=subprocess.DEVNULL)
+    proclist["sondeudp"] = sondeudp
+
+
+@atexit.register
+def stopprocs():
+    if proclist["sondemod"]:
+        try: 
+            proclist["sondemod"].terminate()
+        except:
+            pass
+    if proclist["sondeudp"]:
+        try: 
+            proclist["sondeudp"].terminate()
+        except:
+            pass
+
+
+proclist = { "sondemod":  None, "sondeudp": None }
+launch_decoder(proclist)
+while True:
+    ok = 0
+    try:
+        smp = proclist["sondemod"].poll()
+        if smp:
+            # sondemod has terminated; this may happen at startup if random UDP port is not available
+            pass
+        else:
+            ok+=1
+    except:
+        pass
+    try:
+        sup = proclist["sondeudp"].poll()
+        if sup:
+            # sondeudp has terminated; this should never happen
+            pass
+        else:
+            ok+=1
+    except:
+        pass
+
+    if ok==2:
+        # Everything is still up and running
+        try: 
+            line = proclist["sondemod"].stdout.readline().decode("latin1")
+            # eliminate output from sondeaprs.mod ("^\d+\.\d+hPa")
+            if re.match("\s+\d+\.\d+hPa", line) or re.match(".*UDP:127.0.0.1", line) or re.match(".*OWEBRX>APLWS2", line):
+                pass
+                #print("match: "+line, flush=True)
+            else:
+                print(line, flush=True)
+            #time.sleep(1)
+            continue
+        except:
+            e = sys.exc_info()[0]
+            write_to_page( "<p>Error: %s</p>" % e )
+
+    # Something went wrong, try again
+    stopprocs()
+    time.sleep(1)
+    launch_decoder(proclist)
+
+# Never....
+print("Closing down...")
+

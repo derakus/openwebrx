@@ -398,6 +398,9 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
     def write_aprs_data(self, data):
         self.send({"type": "aprs_data", "value": data})
 
+    def write_radiosonde_data(self, data):
+        self.send({"type": "radiosonde_data", "value": data})
+
     def write_log_message(self, message):
         self.send({"type": "log_message", "value": message})
 

@@ -316,6 +316,11 @@ class dsp(object):
             if self.last_decimation != 1.0:
                 chain += ["csdr fractional_decimator_ff {last_decimation}"]
             return chain + ["csdr convert_f_s16", "direwolf -c {direwolf_config} -r {audio_rate} -t 0 -q d -q h 1>&2"]
+        elif which == "radiosonde":
+            chain += ["csdr fmdemod_quadri_cf"]
+            if self.last_decimation != 1.0:
+                chain += ["csdr fractional_decimator_ff {last_decimation}"]
+            return chain + ["csdr convert_f_s16", "owrx-sonde -r {audio_rate}"]
         elif which == "pocsag":
             chain += ["csdr fmdemod_quadri_cf"]
             if self.last_decimation != 1.0:
@@ -448,6 +453,8 @@ class dsp(object):
             # we best get the ax25 packets from the kiss socket
             kiss = KissClient(self.direwolf_port)
             self.output.send_output("packet_demod", kiss.read)
+        elif self.isRadiosonde():
+            self.output.send_output("radiosonde_demod", self.secondary_process_demod.stdout.readline)
         elif self.isPocsag():
             self.output.send_output("pocsag_demod", self.secondary_process_demod.stdout.readline)
         else:
@@ -561,7 +568,7 @@ class dsp(object):
         return self.hd_output_rate
 
     def get_audio_rate(self):
-        if self.isDigitalVoice() or self.isPacket() or self.isPocsag() or self.isDrm():
+        if self.isDigitalVoice() or self.isPacket() or self.isRadiosonde() or self.isPocsag() or self.isDrm():
             return 48000
         elif self.isWsjtMode() or self.isJs8():
             return 12000
@@ -590,6 +597,11 @@ class dsp(object):
         if demodulator is None:
             demodulator = self.get_secondary_demodulator()
         return demodulator == "packet"
+
+    def isRadiosonde(self, demodulator=None):
+        if demodulator is None:
+            demodulator = self.get_secondary_demodulator()
+        return demodulator == "radiosonde"
 
     def isPocsag(self, demodulator=None):
         if demodulator is None:
@@ -689,7 +701,7 @@ class dsp(object):
     def set_squelch_level(self, squelch_level):
         self.squelch_level = squelch_level
         # no squelch required on digital voice modes
-        actual_squelch = -150 if self.isDigitalVoice() or self.isPacket() or self.isPocsag() or self.isFreeDV() else self.squelch_level
+        actual_squelch = -150 if self.isDigitalVoice() or self.isPacket() or self.isRadiosonde() or self.isPocsag() or self.isFreeDV() else self.squelch_level
         if self.running:
             self.pipes["squelch_pipe"].write("%g\n" % (self.convertToLinear(actual_squelch)))
 
