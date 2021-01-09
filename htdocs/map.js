@@ -66,8 +66,9 @@
     var reColor = function() {
         $.each(rectangles, function(_, r) {
             var color = getColor(colorAccessor(r));
-            r.setOptions({
-                strokeColor: color,
+            //r.setOptions({
+            r.setStyle({
+                color: color,
                 fillColor: color
             });
         });
@@ -82,15 +83,6 @@
                 return r.mode;
         }
     };
-
-    $(function(){
-        $('#openwebrx-map-colormode').on('change', function(){
-            colorMode = $(this).val();
-            colorKeys = {};
-            reColor();
-            updateLegend();
-        });
-    });
 
     var updateLegend = function() {
         var lis = $.map(colorKeys, function(value, key) {
@@ -125,14 +117,6 @@
                         markers[update.callsign] = marker;
                         marker.addTo(map);
                     }
-                    // TODO -check
-                    /*
-                    marker.setOptions($.extend({
-                        position: pos,
-                        map: map,
-                        title: update.callsign
-                    }, aprsOptions, getMarkerOpacityOptions(update.lastseen) ));
-                    */
                     var icon = new AprsIcon(aprsOptions);
                     marker.setIcon(icon);
                     marker.setLatLng(pos);
@@ -141,6 +125,7 @@
                     marker.mode = update.mode;
                     marker.band = update.band;
                     marker.comment = update.location.comment;
+		    marker.opacity = getScale(update.lastseen);
                     marker.update(); // necessary?
 
                     // TODO the trim should happen on the server side
@@ -155,7 +140,6 @@
                     }
                 break;
                 case 'locator':
-                    /* TODO
                     var loc = update.location.locator;
                     var lat = (loc.charCodeAt(1) - 65 - 9) * 10 + Number(loc[3]);
                     var lon = (loc.charCodeAt(0) - 65 - 9) * 20 + Number(loc[2]) * 2;
@@ -165,13 +149,22 @@
                     var color = getColor(colorAccessor(update));
                     if (rectangles[update.callsign]) {
                         rectangle = rectangles[update.callsign];
+			rectangle.setBounds([[lat, lon], [lat+1, lon+2]]);
                     } else {
-                        rectangle = new google.maps.Rectangle();
-                        rectangle.addListener('click', function(){
+                        //rectangle = new google.maps.Rectangle();
+			rectangle = L.rectangle([[lat, lon], [lat+1, lon+2]]);
+                        rectangle.on('click', function(){
                             showLocatorInfoWindow(this.locator, this.center);
                         });
                         rectangles[update.callsign] = rectangle;
                     }
+		    opt = getRectangleOpacityOptions(update.lastseen);
+		    opt.color = color;
+		    opt.weight = 2;
+		    opt.fillColor = color;
+		    rectangle.setStyle(opt);
+		    rectangle.addTo(map);
+		    /*
                     rectangle.setOptions($.extend({
                         strokeColor: color,
                         strokeWeight: 2,
@@ -184,6 +177,7 @@
                             east: lon + 2
                         }
                     }, getRectangleOpacityOptions(update.lastseen) ));
+		    */
                     rectangle.lastseen = update.lastseen;
                     rectangle.locator = update.location.locator;
                     rectangle.mode = update.mode;
@@ -199,7 +193,6 @@
                     if (infowindow && infowindow.locator && infowindow.locator == update.location.locator) {
                         showLocatorInfoWindow(infowindow.locator, center);
                     }
-                    */
                 break;
             }
         });
@@ -271,9 +264,17 @@
         </select>
         <div class="content"></div>
     `;
+				    L.DomEvent.disableClickPropagation(div);
+				    L.DomEvent.on(div, "change", function(e){
+					colorMode = e.target.value;
+					colorKeys = {};
+					reColor();
+					updateLegend();
+				    });
 				    return div;
                                 }
                             });
+
 		   	    L.Control.mapLegend = function(opts) {
 				return new L.Control.MapLegend(opts);
 		   	    }
@@ -288,8 +289,13 @@
 				// options = { symbol: { table: '/', index: 18 }, course: 310 };
 				// var myIcon = new AprsIcon(options);
 				// normal:
-				L.Icon.Default.prototype.options.popupAnchor = [40,-50];
-                                receiverMarker = new L.Marker( new L.LatLng(receiverPos['lat'], receiverPos['lng']), /*{icon: myIcon}*/ );
+				var myIcon = L.icon({
+					iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+					iconSize: [20,33],
+					iconAnchor: [11,33],
+					popupAnchor: [0,-28],
+				});
+                                receiverMarker = new L.Marker( new L.LatLng(receiverPos['lat'], receiverPos['lng']), {icon: myIcon} );
                                 receiverMarker.on('click', function() {
                                     showReceiverInfoWindow(receiverMarker);
                                 });
@@ -349,6 +355,10 @@
     var getInfoWindow = function() {
         if (!infowindow) {
             infowindow = L.popup( { offset: L.point(0, -0) });
+	    infowindow.on('remove', function() {
+		    delete infowindow.locator;
+		    delete infowindow.callsign;
+	    });
             /*
             infowindow = new google.maps.InfoWindow();
             google.maps.event.addListener(infowindow, 'closeclick', function() {
@@ -384,8 +394,9 @@
                 }).join("") +
             '</ul>'
         );
-        infowindow.setPosition(pos);
-        infowindow.open(map);
+        //infowindow.setPosition(pos);
+        infowindow.setLatLng([pos['lat'], pos['lng']]);  //Position(pos);
+        infowindow.openOn(map);
     };
 
     var showMarkerInfoWindow = function(callsign, pos) {
@@ -402,13 +413,8 @@
             '<div>' + timestring + ' using ' + marker.mode + ( marker.band ? ' on ' + marker.band : '' ) + '</div>' +
             commentString
         );
-        //infowindow.open(map, marker);
-        //marker.unbindPopup();
 	if (infowindow._source) infowindow._source.unbindPopup();
-        // if (infowindow.marker) infowindow.marker.unbindPopup();
         marker.bindPopup(infowindow).openPopup();
-        //infowindow.marker = marker;
-        //infowindow.setLatLng(marker.getLatLng()).openOn(map);
     }
 
     var showReceiverInfoWindow = function(marker) {
@@ -417,10 +423,8 @@
             '<h3>' + marker.config['receiver_name'] + '</h3>' +
             '<div>Receiver location</div>'
         );
-        //infowindow.open(map, marker);
-        infowindow.setLatLng(marker.getLatLng()).openOn(map);
-        //marker.unbindPopup();
-        //marker.bindPopup(infowindow).openPopup();
+	if (infowindow._source) infowindow._source.unbindPopup();
+        marker.bindPopup(infowindow).openPopup();
     }
 
     var getScale = function(lastseen) {
@@ -435,15 +439,9 @@
     var getRectangleOpacityOptions = function(lastseen) {
         var scale = getScale(lastseen);
         return {
-            strokeOpacity: strokeOpacity * scale,
+            //strokeOpacity: strokeOpacity * scale,
+            opacity: strokeOpacity * scale,
             fillOpacity: fillOpacity * scale
-        };
-    };
-
-    var getMarkerOpacityOptions = function(lastseen) {
-        var scale = getScale(lastseen);
-        return {
-            opacity: scale
         };
     };
 
@@ -457,6 +455,7 @@
                 // TODO: m.setMap();
                 return;
             }
+	    m.setStyle({opacity: getScale(m.lastseen)});
             // TODO m.setOptions(getRectangleOpacityOptions(m.lastseen));
         });
         $.each(markers, function(callsign, m) {
@@ -466,8 +465,9 @@
                 // TODO: m.setMap();
                 return;
             }
+	    m.setOpacity(getScale(m.lastseen));
             // TODO m.setOptions(getMarkerOpacityOptions(m.lastseen));
         });
-    }, 1000);
+    }, 10 /* TODO: set back up to 1000 */);
 
 })();
