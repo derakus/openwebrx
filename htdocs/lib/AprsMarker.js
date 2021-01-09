@@ -1,3 +1,63 @@
+var AprsIcon = L.DivIcon.extend({
+    options: {
+        className: "dummyAprsIcon",
+        iconSize: [24, 24],
+	popupAnchor: [0,-6],
+    },
+    createIcon: function(oldIcon) {
+        var realicon = L.DivIcon.prototype.createIcon.call(this, oldIcon);
+	var icon = document.createElement('div');
+	realicon.appendChild(icon);
+        icon.position = 'absolute';
+        icon.cursor = 'pointer';
+        icon.style.backgroundColor = "#ff0000";
+        icon.style.cursor = "crosshair";
+        icon.style.width = '24px';
+        icon.style.height = '24px';
+	if(this.options.course) {
+                if (this.options.course> 180) {
+                        transform = 'scalex(-1) rotate(' + (270 - this.options.course) + 'deg)'
+                } else {
+                        transform = 'rotate(' + (this.options.course - 90) + 'deg)';
+                }
+                icon.style[L.DomUtil.TRANSFORM] += transform;
+                icon.style[L.DomUtil.TRANSFORM + 'Origin'] = '50% 50%';
+        }
+
+
+        var overlay = this.overlay = document.createElement('div');
+        overlay.style.width = '24px';
+        overlay.style.height = '24px';
+        overlay.style.background = 'url(aprs-symbols/aprs-symbols-24-2@2x.png)';
+        overlay.style['background-size'] = '384px 144px';
+        overlay.style.display = 'none';
+        icon.appendChild(overlay);
+        L.DomUtil.addClass(icon, "test");
+
+        var tableId = this.options.symbol.table === '/' ? 0 : 1;
+        icon.style.background = 'url(aprs-symbols/aprs-symbols-24-' + tableId + '@2x.png)';
+        icon.style['background-size'] = '384px 144px';
+        icon.style['background-position-x'] = -(this.options.symbol.index % 16) * 24 + 'px';
+        icon.style['background-position-y'] = -Math.floor(this.options.symbol.index / 16) * 24 + 'px';
+
+        if (this.options.symbol.table !== '/' && this.options.symbol.table !== '\\') {
+            overlay.style.display = 'block';
+            overlay.style['background-position-x'] = -(this.options.symbol.tableindex % 16) * 24 + 'px';
+            overlay.style['background-position-y'] = -Math.floor(this.options.symbol.tableindex / 16) * 24 + 'px';
+        } else {
+            overlay.style.display = 'none';
+        }
+        if (this.options.opacity) {
+            icon.style.opacity = this.options.opacity;
+        } else {
+            icon.style.opacity = null;
+        }   
+        return realicon;
+    }
+});
+
+//// old
+/*
 function AprsMarker() {}
 
 AprsMarker.prototype = new google.maps.OverlayView();
@@ -88,4 +148,4 @@ AprsMarker.prototype.remove = function() {
 
 AprsMarker.prototype.getAnchorPoint = function() {
     return new google.maps.Point(0, -12);
-};
+};*/

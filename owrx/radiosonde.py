@@ -5,8 +5,22 @@ from owrx.parser import Parser
 from datetime import datetime, timezone
 import re
 import logging
+import json
 
 logger = logging.getLogger(__name__)
+
+class RadiosondeLocation(LatLngLocation):
+    def __init__(self, data):
+        super().__init__(data["lat"], data["lon"])
+        self.data = data
+
+    def __dict__(self):
+        res = super(RadiosondeLocation, self).__dict__()
+        for key in ["alt", "course", "speed", "symbol"]:
+            if key in self.data:
+                res[key] = self.data[key]
+        return res
+
 
 
 class RadiosondeParser(Parser):
@@ -36,10 +50,13 @@ class RadiosondeParser(Parser):
         # An interactive user is also interested in non-final data (partial calibration, crc errors
         # so for now we just use the raw verbose output from stdout of sondemod
         # sondemod is also writing clean frames to /tmp/sondemod-<port> in csv format
-        ## TODO: SKip APRS frames
-        ## TODO: Skip UDP:xxxx info frames
-        logger.debug("data: %s", raw)
-        frame = {"raw": str(raw, "latin1")}
+        #
+        if raw[:1] == b'{':
+            frame = str(raw, "latin1");
+            self.updateMap(frame);
+        else:
+            frame = {"raw": str(raw, "latin1")}
+        logger.debug("data: %s", frame)
         try:
             self.handler.write_radiosonde_data(frame)
         except e:
@@ -48,17 +65,20 @@ class RadiosondeParser(Parser):
 
 
     def updateMap(self, mapData):
-        if "type" in mapData and mapData["type"] == "thirdparty" and "data" in mapData:
-            mapData = mapData["data"]
-        if "lat" in mapData and "lon" in mapData:
-            loc = AprsLocation(mapData)
-            source = mapData["source"]
-            if "type" in mapData:
-                if mapData["type"] == "item":
-                    source = mapData["item"]
-                elif mapData["type"] == "object":
-                    source = mapData["object"]
-            Map.getSharedInstance().updateLocation(source, loc, "APRS", self.band)
+        logger.debug("updateMap: "+mapData);
+        #maybe add exception handler if format is wrong? TODO
+        sondedata = json.loads(mapData)
+        source = sondedata["Name"]
+        loc = RadiosondeLocation({
+                "type": "latlon",
+                "lat": sondedata['lat'],
+                "lon": sondedata['long'],
+                "alt": sondedata['alt'],
+                "speed": sondedata['speed'],
+                "course": sondedata['dir'],
+                "symbol": { 'symbol': "O", 'table': "/", 'index': 46, 'tableindex': 0 },
+        })
+        Map.getSharedInstance().updateLocation(source, loc, "Sonde", self.band)
 
     def hasCompressedCoordinates(self, raw):
         return raw[0] == "/" or raw[0] == "\\"

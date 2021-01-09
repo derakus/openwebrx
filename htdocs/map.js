@@ -100,20 +100,17 @@
     }
 
     var processUpdates = function(updates) {
-        if (typeof(AprsMarker) == 'undefined') {
+        if (!map) {  //typeof(AprsMarker) == 'undefined') {
             updateQueue = updateQueue.concat(updates);
             return;
         }
         updates.forEach(function(update){
-
             switch (update.location.type) {
                 case 'latlon':
-                    var pos = new google.maps.LatLng(update.location.lat, update.location.lon);
+                    var pos = new L.LatLng(update.location.lat, update.location.lon);
                     var marker;
-                    var markerClass = google.maps.Marker;
                     var aprsOptions = {}
                     if (update.location.symbol) {
-                        markerClass = AprsMarker;
                         aprsOptions.symbol = update.location.symbol;
                         aprsOptions.course = update.location.course;
                         aprsOptions.speed = update.location.speed;
@@ -121,21 +118,30 @@
                     if (markers[update.callsign]) {
                         marker = markers[update.callsign];
                     } else {
-                        marker = new markerClass();
-                        marker.addListener('click', function(){
+                        marker = new L.marker(pos)
+                        marker.on('click', function(){
                             showMarkerInfoWindow(update.callsign, pos);
                         });
                         markers[update.callsign] = marker;
+                        marker.addTo(map);
                     }
+                    // TODO -check
+                    /*
                     marker.setOptions($.extend({
                         position: pos,
                         map: map,
                         title: update.callsign
                     }, aprsOptions, getMarkerOpacityOptions(update.lastseen) ));
+                    */
+                    var icon = new AprsIcon(aprsOptions);
+                    marker.setIcon(icon);
+                    marker.setLatLng(pos);
+                    marker.title = update.callsign;
                     marker.lastseen = update.lastseen;
                     marker.mode = update.mode;
                     marker.band = update.band;
                     marker.comment = update.location.comment;
+                    marker.update(); // necessary?
 
                     // TODO the trim should happen on the server side
                     if (expectedCallsign && expectedCallsign == update.callsign.trim()) {
@@ -149,10 +155,11 @@
                     }
                 break;
                 case 'locator':
+                    /* TODO
                     var loc = update.location.locator;
                     var lat = (loc.charCodeAt(1) - 65 - 9) * 10 + Number(loc[3]);
                     var lon = (loc.charCodeAt(0) - 65 - 9) * 20 + Number(loc[2]) * 2;
-                    var center = new google.maps.LatLng({lat: lat + .5, lng: lon + 1});
+                    var center = new L.LatLng(lat + .5, lon + 1);
                     var rectangle;
                     // the accessor is designed to work on the rectangle... but it should work on the update object, too
                     var color = getColor(colorAccessor(update));
@@ -192,6 +199,7 @@
                     if (infowindow && infowindow.locator && infowindow.locator == update.location.locator) {
                         showLocatorInfoWindow(infowindow.locator, center);
                     }
+                    */
                 break;
             }
         });
@@ -226,6 +234,7 @@
             }
             try {
                 var json = JSON.parse(e.data);
+		console.log(e.data);
                 switch (json.type) {
                     case "config":
                         var config = json.value;
@@ -233,41 +242,67 @@
                             lat: config.receiver_gps.lat,
                             lng: config.receiver_gps.lon
                         };
-                        if (!map) $.getScript("https://maps.googleapis.com/maps/api/js?key=" + config.google_maps_api_key).done(function(){
-                            map = new google.maps.Map($('.openwebrx-map')[0], {
-                                center: receiverPos,
-                                zoom: 5,
+                        if (!map) { // $.getScript("https://unpkg.com/leaflet@1.7.1/dist/leaflet.js").done(function(){
+                            // map = new L.Map($('.openwebrx-map')[0], {
+                            map = new L.Map("openwebrx-map", { //$('.openwebrx-map')[0], {
+                                center: new L.LatLng(receiverPos['lat'], receiverPos['lng']),
+                                zoom: 8,
+                                layers: new L.TileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                   })
                             });
+                            function updateTerminator(t) { t.setTime(); }
+                            map.addControl(new L.Control.Fullscreen({
+                                title: {
+                                    'false': 'View Fullscreen',
+                                    'true': 'Exit Fullscreen'
+                                }
+                            }));
+                            L.control.scale({metric: true, imperial: false, position: "bottomright"}).addTo(map);
 
-                            $.getScript("static/lib/nite-overlay.js").done(function(){
-                                nite.init(map);
-                                setInterval(function() { nite.refresh() }, 10000); // every 10s
+                            L.Control.MapLegend = L.Control.extend({
+                                onAdd: function(map) {
+				    var div = L.DomUtil.create('div','openwebrx-map-legend');
+				    div.innerHTML = `
+    <h3>Colors</h3>
+        <select id="openwebrx-map-colormode">
+            <option value="byband" selected="selected">By Band</option>
+            <option value="bymode">By Mode</option>
+        </select>
+        <div class="content"></div>
+    `;
+				    return div;
+                                }
                             });
-                            $.getScript('static/lib/AprsMarker.js').done(function(){
-                                processUpdates(updateQueue);
-                                updateQueue = [];
-                            });
-                            map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push($(".openwebrx-map-legend")[0]);
+		   	    L.Control.mapLegend = function(opts) {
+				return new L.Control.MapLegend(opts);
+		   	    }
+                            L.Control.mapLegend({position: 'bottomleft'}).addTo(map);
+
+                            var t = L.terminator();
+                            t.addTo(map);
+                            setInterval(function(){updateTerminator(t)}, 500);
 
                             if (!receiverMarker) {
-                                receiverMarker = new google.maps.Marker();
-                                receiverMarker.addListener('click', function() {
+				// for testing
+				// options = { symbol: { table: '/', index: 18 }, course: 310 };
+				// var myIcon = new AprsIcon(options);
+				// normal:
+				L.Icon.Default.prototype.options.popupAnchor = [40,-50];
+                                receiverMarker = new L.Marker( new L.LatLng(receiverPos['lat'], receiverPos['lng']), /*{icon: myIcon}*/ );
+                                receiverMarker.on('click', function() {
                                     showReceiverInfoWindow(receiverMarker);
                                 });
                             }
-                            receiverMarker.setOptions({
-                                map: map,
-                                position: receiverPos,
-                                title: config['receiver_name'],
-                                config: config
-                            });
-                        }); else {
-                            receiverMarker.setOptions({
-                                map: map,
-                                position: receiverPos,
-                                title: config['receiver_name'],
-                                config: config
-                            });
+                            //receiverMarker.setLatLng(receiverPos['lat'], receiverPos['lng']);
+                            receiverMarker.config = config;
+                            receiverMarker.titel = config['receiver_name'];
+                            map.addLayer(receiverMarker);
+                        } else {
+                            //receiverMarker.setLatLng(receiverPos['lat'], receiverPos['lng']);
+                            receiverMarker.config = config;
+                            receiverMarker.titel = config['receiver_name'];
+                            receiverMarker.update();
                         }
                         retention_time = config.map_position_retention_time * 1000;
                     break;
@@ -313,11 +348,14 @@
 
     var getInfoWindow = function() {
         if (!infowindow) {
+            infowindow = L.popup( { offset: L.point(0, -0) });
+            /*
             infowindow = new google.maps.InfoWindow();
             google.maps.event.addListener(infowindow, 'closeclick', function() {
                 delete infowindow.locator;
                 delete infowindow.callsign;
             });
+            */
         }
         return infowindow;
     }
@@ -364,7 +402,13 @@
             '<div>' + timestring + ' using ' + marker.mode + ( marker.band ? ' on ' + marker.band : '' ) + '</div>' +
             commentString
         );
-        infowindow.open(map, marker);
+        //infowindow.open(map, marker);
+        //marker.unbindPopup();
+	if (infowindow._source) infowindow._source.unbindPopup();
+        // if (infowindow.marker) infowindow.marker.unbindPopup();
+        marker.bindPopup(infowindow).openPopup();
+        //infowindow.marker = marker;
+        //infowindow.setLatLng(marker.getLatLng()).openOn(map);
     }
 
     var showReceiverInfoWindow = function(marker) {
@@ -373,7 +417,10 @@
             '<h3>' + marker.config['receiver_name'] + '</h3>' +
             '<div>Receiver location</div>'
         );
-        infowindow.open(map, marker);
+        //infowindow.open(map, marker);
+        infowindow.setLatLng(marker.getLatLng()).openOn(map);
+        //marker.unbindPopup();
+        //marker.bindPopup(infowindow).openPopup();
     }
 
     var getScale = function(lastseen) {
@@ -407,19 +454,19 @@
             var age = now - m.lastseen;
             if (age > retention_time) {
                 delete rectangles[callsign];
-                m.setMap();
+                // TODO: m.setMap();
                 return;
             }
-            m.setOptions(getRectangleOpacityOptions(m.lastseen));
+            // TODO m.setOptions(getRectangleOpacityOptions(m.lastseen));
         });
         $.each(markers, function(callsign, m) {
             var age = now - m.lastseen;
             if (age > retention_time) {
                 delete markers[callsign];
-                m.setMap();
+                // TODO: m.setMap();
                 return;
             }
-            m.setOptions(getMarkerOpacityOptions(m.lastseen));
+            // TODO m.setOptions(getMarkerOpacityOptions(m.lastseen));
         });
     }, 1000);
 

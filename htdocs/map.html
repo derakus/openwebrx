@@ -5,12 +5,19 @@
     <link rel="shortcut icon" type="image/x-icon" href="static/favicon.ico" />
     <script src="compiled/map.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src=" https://unpkg.com/@joergdietrich/leaflet.terminator@1.0.0/L.Terminator.js"></script>
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
+    <script src="static/lib/AprsMarker.js"></script>  <!-- TODO: rename to AprsIcon -->
     <link rel="stylesheet" type="text/css" href="static/css/map.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.2/dist/leaflet.css" />
+    <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css' rel='stylesheet' />
     <meta charset="utf-8">
 </head>
 <body>
     ${header}
-    <div class="openwebrx-map"></div>
+    <div id="openwebrx-map" class="openwebrx-map"></div>
+    <!--
     <div class="openwebrx-map-legend">
         <h3>Colors</h3>
         <select id="openwebrx-map-colormode">
@@ -19,5 +26,6 @@
         </select>
         <div class="content"></div>
     </div>
+    -->
 </body>
 </html>

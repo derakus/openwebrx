@@ -237,7 +237,6 @@ class Jt9Decoder(Decoder):
         # '**** -23  0.6 3023 `  <...> <...> R 591631 BI53PV'
         msg, timestamp = self.parse_timestamp(msg)
         wsjt_msg = msg[17:53].strip()
-
         result = {
             "timestamp": timestamp,
             "db": float(msg[0:3]),

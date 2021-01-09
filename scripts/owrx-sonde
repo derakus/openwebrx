@@ -5,6 +5,11 @@ import sys
 import atexit
 import time
 import re
+import selectors
+import os
+import json
+
+port = -1
 
 if len(sys.argv)>1 and sys.argv[1] == "--help":
     # Used by openwebrx to test availablility. Could be  more informative output...
@@ -12,21 +17,39 @@ if len(sys.argv)>1 and sys.argv[1] == "--help":
     exit(0)
 
 def launch_decoder(proclist):
+    global sel
+    global logreader
+    sel = selectors.DefaultSelector()
+
     # Launch sondemod wth random UDP port, and output to CSV
     # For now, we use sondemod -v output (which is more detailed and more practical for interactive use)
     # print("Starting sondemod")
+    try:
+        os.mkdir("/tmp/dxlaprs/"); # just in case it does not exist
+    except:
+        pass
+    os.chdir("/tmp/dxlaprs/"); # for now, same tmp directory for all users. should be *good*
     random.seed(None)
     port = random.randrange(50000,60000)
-    sondemodcmd = ["sondemod", "-C", "/tmp/sondemod-{port}".format(port=port), "-d", "-F", "-I", "OWEBRX",
+    logfile = "/tmp/dxlaprs/logfile-{port}".format(port=port)
+    sondemodcmd = ["sondemod", "-C", logfile, "-d", "-F", "-I", "OWEBRX",
+                   "-S", "/usr/share/dxlaprs/aprsmap_common/osm/", "-x", "/tmp/e.txt",
                    "-o", "{port}".format(port=port), "-p", "2", "-v"]
     sondemod = subprocess.Popen(sondemodcmd, stdout=subprocess.PIPE)
     proclist["sondemod"] = sondemod
+
+    logproc = subprocess.Popen(["tail", "--retry", "-f", logfile], stdout=subprocess.PIPE);
+    logreader = logproc.stdout
+    proclist["logreader"] = logproc
 
     # print("Starting sondeudp")
     # Read audio data from stdin, forward to sondeudp 
     sondeudpcmd = ["sondeudp", "-f", "48000", "-o", "/dev/stdin", "-c", "1", "-u", "127.0.0.1:%d" % port ]
     sondeudp = subprocess.Popen(sondeudpcmd, stdin=sys.stdin, stdout=subprocess.DEVNULL)
     proclist["sondeudp"] = sondeudp
+
+    sel.register(sondemod.stdout, selectors.EVENT_READ, "raw")
+    sel.register(logreader, selectors.EVENT_READ, "csv")
 
 
 @atexit.register
@@ -41,9 +64,19 @@ def stopprocs():
             proclist["sondeudp"].terminate()
         except:
             pass
+    if proclist["logreader"]:
+        try: 
+            proclist["logreader"].terminate()
+        except:
+            pass
+    try:
+        os.remove("/tmp/dxlaprs/logfile-{port}")
+    except:
+        pass
 
 
-proclist = { "sondemod":  None, "sondeudp": None }
+proclist = { "sondemod":  None, "sondeudp": None, "logreader": None }
+header = None
 launch_decoder(proclist)
 while True:
     ok = 0
@@ -69,23 +102,36 @@ while True:
     if ok==2:
         # Everything is still up and running
         try: 
-            line = proclist["sondemod"].stdout.readline().decode("latin1")
-            # eliminate output from sondeaprs.mod ("^\d+\.\d+hPa")
-            if re.match("\s+\d+\.\d+hPa", line) or re.match(".*UDP:127.0.0.1", line) or re.match(".*OWEBRX>APLWS2", line):
-                pass
-                #print("match: "+line, flush=True)
-            else:
-                print(line, flush=True)
-            #time.sleep(1)
-            continue
+            events = sel.select()
+            for key, mask in events:
+                if key.data == "csv":
+                    line = logreader.readline().decode("latin1")
+                    if header == None:
+                        header = line.split(",")
+                    else:
+                        data = line.split(",")
+                        kv = dict(zip(header,data))    
+                        print(json.dumps(kv), flush=True)
+                else:
+                    line = proclist["sondemod"].stdout.readline().decode("latin1")
+                    # eliminate output from sondeaprs.mod ("^\d+\.\d+hPa")
+                    if re.match("\s+\d+\.\d+hPa", line) or re.match(".*UDP:127.0.0.1", line) or re.match(".*OWEBRX>APLWS2", line):
+                        pass
+                        # print("match: "+line, flush=True)
+                    else:
+                        print(line, flush=True)
+                    #time.sleep(1)
+                    continue
         except:
             e = sys.exc_info()[0]
-            write_to_page( "<p>Error: %s</p>" % e )
+            print( "<p>Error: %s</p>" % e )
+            ok = 0
 
-    # Something went wrong, try again
-    stopprocs()
-    time.sleep(1)
-    launch_decoder(proclist)
+    if ok != 2:
+        # Something went wrong, try again
+        stopprocs()
+        time.sleep(1)
+        launch_decoder(proclist)
 
 # Never....
 print("Closing down...")

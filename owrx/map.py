@@ -78,6 +78,7 @@ class Map(object):
             pass
 
     def updateLocation(self, callsign, loc: Location, mode: str, band: Band = None):
+        logger.info("Sending location update for %s", callsign)
         ts = datetime.now()
         with self.positionsLock:
             self.positions[callsign] = {"location": loc, "updated": ts, "mode": mode, "band": band}
