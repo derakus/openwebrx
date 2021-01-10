@@ -240,11 +240,13 @@ RadiosondeMessagePanel.prototype.pushMessage = function(msg) {
 
     rowcount = $(this.el).find('tbody tr').length;
     if (rowcount > 1000) { $(this.el).find('tbody tr:first').remove(); }
+    if(msg.raw) {
     $b.append($(
 	'<tr>' +
 	'<td class="basic">' + msg.raw + '</td>' +
 	'</tr>'
     ));
+    }
     $b.scrollTop($b[0].scrollHeight);
 };
 

@@ -109,13 +109,22 @@
                     }
                     if (markers[update.callsign]) {
                         marker = markers[update.callsign];
+			if(pos.equals(marker.getLatLng())) {
+			    console.log("update: position unchanged");
+			} else {
+			    console.log("update: appending new position to path");
+			    marker.path.addLatLng(pos);
+			}
                     } else {
-                        marker = new L.marker(pos)
+                        marker = new L.marker(pos);
+			poly = L.polyline(pos, { opacity: 0.5, color: '#3388ff' });
+			marker.path = poly
                         marker.on('click', function(){
                             showMarkerInfoWindow(update.callsign, pos);
                         });
                         markers[update.callsign] = marker;
                         marker.addTo(map);
+			poly.addTo(map);
                     }
                     var icon = new AprsIcon(aprsOptions);
                     marker.setIcon(icon);
