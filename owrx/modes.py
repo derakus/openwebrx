@@ -87,7 +87,9 @@ class Modes(object):
             service=True,
             squelch=False,
         ),
-        DigitalMode("radiosonde", "Radiosonde", underlying=["nfm"], bandpass=Bandpass(-10000,10000), requirements=["radiosonde"], squelch=False,),
+        DigitalMode("radiosonde", "Radiosonde", underlying=["nfm"], bandpass=Bandpass(-3000,3000), requirements=["radiosonde"], squelch=False,),
+        DigitalMode("radiosonde:rs41", "Sonde Zilog RS41", underlying=["nfm"], bandpass=Bandpass(-3000,3000), requirements=["radiosonde:rs41"], squelch=False,),
+        DigitalMode("radiosonde:rs41iq", "Sonde Zilog RS41 IQ", underlying=["nfm"], bandpass=Bandpass(-3000,3000), requirements=["radiosonde:rs41"], squelch=False,),
         DigitalMode(
             "pocsag",
             "Pocsag",

@@ -8,13 +8,67 @@ import re
 import selectors
 import os
 import json
+import argparse
+import traceback
 
 port = -1
+
+parser = argparse.ArgumentParser(description="Launch some sonde decoder for OpenWebRX")
+parser.add_argument("-t", action="store", dest="target")
+parser.add_argument("-r", action="store", dest="rate")
+
+args = parser.parse_args()
+if not args.target:
+    args.target = "radiosonde"
+
 
 if len(sys.argv)>1 and sys.argv[1] == "--help":
     # Used by openwebrx to test availablility. Could be  more informative output...
     print ("It works.")
     exit(0)
+
+
+def launch_iq_zilogdecoder(proclist):
+    global sel
+    global logreader
+    sel = selectors.DefaultSelector()
+    try:
+        os.mkdir("/tmp/zilog");
+    except:
+        pass
+    os.chdir("/tmp/zilog");
+    #mkwavcmd = ["sox", "-t", "raw", "-r", "48000", "-b", "16", "-e", "signed", "-", "-t", "wav", "-"]
+    #mkwav = subprocess.Popen(mkwavcmd, stdin=sys.stdin, stdout=subprocess.PIPE);
+    #proclist["mkwav"] = mkwav
+
+    zilogcmd = ["rs41mod", "--iq2", "--ecc2", "--crc", "-vx", "--ptu", "-", "48000", "32"]
+    zilog = subprocess.Popen(zilogcmd, stdin=sys.stdin, stdout=subprocess.PIPE);
+    proclist["zilog"] = zilog   # TODO: better terminology. sondemod.stdout is used below for output msg
+
+    sel.register(zilog.stdout, selectors.EVENT_READ, "zilog");
+    # no logreader....! (TODO)
+
+
+def launch_zilogdecoder(proclist):
+    global sel
+    global logreader
+    sel = selectors.DefaultSelector()
+    try:
+        os.mkdir("/tmp/zilog");
+    except:
+        pass
+    os.chdir("/tmp/zilog");
+    mkwavcmd = ["sox", "-t", "raw", "-r", "48000", "-b", "16", "-e", "signed", "-", "-t", "wav", "-"]
+    mkwav = subprocess.Popen(mkwavcmd, stdin=sys.stdin, stdout=subprocess.PIPE);
+    proclist["mkwav"] = mkwav
+
+    zilogcmd = ["rs41mod", "--ecc2", "--crc", "-vx", "--ptu"]
+    zilog = subprocess.Popen(zilogcmd, stdin=mkwav.stdout, stdout=subprocess.PIPE);
+    proclist["zilog"] = zilog   # TODO: better terminology. sondemod.stdout is used below for output msg
+
+    sel.register(zilog.stdout, selectors.EVENT_READ, "zilog");
+    # no logreader....! (TODO)
+
 
 def launch_decoder(proclist):
     global sel
@@ -54,19 +108,9 @@ def launch_decoder(proclist):
 
 @atexit.register
 def stopprocs():
-    if proclist["sondemod"]:
+    for proc in proclist.keys():
         try: 
-            proclist["sondemod"].terminate()
-        except:
-            pass
-    if proclist["sondeudp"]:
-        try: 
-            proclist["sondeudp"].terminate()
-        except:
-            pass
-    if proclist["logreader"]:
-        try: 
-            proclist["logreader"].terminate()
+            proclist[proc].terminate()
         except:
             pass
     try:
@@ -75,63 +119,84 @@ def stopprocs():
         pass
 
 
-proclist = { "sondemod":  None, "sondeudp": None, "logreader": None }
-header = None
-launch_decoder(proclist)
-while True:
-    ok = 0
-    try:
-        smp = proclist["sondemod"].poll()
-        if smp:
-            # sondemod has terminated; this may happen at startup if random UDP port is not available
-            pass
-        else:
-            ok+=1
-    except:
-        pass
-    try:
-        sup = proclist["sondeudp"].poll()
-        if sup:
-            # sondeudp has terminated; this should never happen
-            pass
-        else:
-            ok+=1
-    except:
-        pass
+#proclist = { "sondemod":  None, "sondeudp": None, "logreader": None }
+proclist = {}
 
-    if ok==2:
+header = None
+ok = -1
+print("Target is %s "% args.target, file=sys.stderr)
+
+while True:
+    if ok <= 0:
+        # First start, or something went wrong, try again
+        if ok == 0:
+            stopprocs()
+            time.sleep(1)
+        if args.target == "radiosonde:rs41":
+            launch_zilogdecoder(proclist)
+        elif args.target == "radiosonde:rs41iq":
+            launch_iq_zilogdecoder(proclist)
+        else:
+            launch_decoder(proclist)
+
+    ok = 0
+    for proc in proclist.keys():
+        try:
+            smp = proclist[proc].poll()
+            if not smp:
+                ok+=1
+        except:
+            pass
+
+    if ok==len(proclist):
         # Everything is still up and running
         try: 
             events = sel.select()
             for key, mask in events:
                 if key.data == "csv":
-                    line = logreader.readline().decode("latin1")
+                    line = key.fileobj.readline().decode("latin1")
                     if header == None:
                         header = line.split(",")
                     else:
                         data = line.split(",")
                         kv = dict(zip(header,data))    
                         print(json.dumps(kv), flush=True)
-                else:
-                    line = proclist["sondemod"].stdout.readline().decode("latin1")
+                elif key.data == "raw":
+                    line = key.fileobj.readline().decode("latin1")
                     # eliminate output from sondeaprs.mod ("^\d+\.\d+hPa")
                     if re.match("\s+\d+\.\d+hPa", line) or re.match(".*UDP:127.0.0.1", line) or re.match(".*OWEBRX>APLWS2", line):
                         pass
                         # print("match: "+line, flush=True)
                     else:
                         print(line, flush=True)
-                    #time.sleep(1)
-                    continue
-        except:
-            e = sys.exc_info()[0]
-            print( "<p>Error: %s</p>" % e )
-            ok = 0
+                else:
+                    # Zilog...
+                    line = key.fileobj.readline().decode("latin1")
+                    print(line, flush=True)
+                    # parse line, send raw line and decoded line to output
+                    m = re.search('(\d\d):(\d\d):(\d\d\.?\d?\d?\d?).*\ +lat:\ *(-?\d*)(\.\d*).*\ +lon:\ *(-?\d*)(\.\d*).*\ +alt:\ *(-?\d*\.\d*).*', line)
+                    kv = dict()
+                    if m:
+                        kv["Time"] = "%02d:%02d:%02s" % (int(m.group(1)), int(m.group(2)), int(float(m.group(3))))
+                        kv["Type"] = "RS41"
+                        kv["lat"] = "%s%s" % (m.group(4), m.group(5))
+                        kv["long"] = "%s%s" % (m.group(6), m.group(7))
+                        kv["alt"] = m.group(8)
+                        m = re.search('(\d\d\d\d)-(\d\d)-(\d\d)', line)
+                        if m:
+                            kv["Date"] = "%04d.%02s.%02s" % (int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                        m = re.search('vH:\ *(\d+\.\d+)(m/s)?\ +D:\ *(\d+\.\d+)', line)
+                        if m:
+                            kv["speed"] = m.group(1)
+                            kv["dir"] = m.group(3)
+                        m = re.search('\(.*?([\w]+)\)', line)
+                        if m:
+                            kv["Name"] = m.group(1)
+                        print(json.dumps(kv), flush=True)
 
-    if ok != 2:
-        # Something went wrong, try again
-        stopprocs()
-        time.sleep(1)
-        launch_decoder(proclist)
+        except Exception as error:
+            print(traceback.format_exc(), flush=True)
+            ok = 0
 
 # Never....
 print("Closing down...")

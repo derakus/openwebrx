@@ -316,11 +316,16 @@ class dsp(object):
             if self.last_decimation != 1.0:
                 chain += ["csdr fractional_decimator_ff {last_decimation}"]
             return chain + ["csdr convert_f_s16", "direwolf -c {direwolf_config} -r {audio_rate} -t 0 -q d -q h 1>&2"]
-        elif which == "radiosonde":
-            chain += ["csdr fmdemod_quadri_cf"]
-            if self.last_decimation != 1.0:
-                chain += ["csdr fractional_decimator_ff {last_decimation}"]
-            return chain + ["csdr convert_f_s16", "owrx-sonde -r {audio_rate}"]
+        elif which and which.startswith("radiosonde"):
+            if which.endswith("iq"):
+                if self.last_decimation != 1.0:
+                    chain += ["csdr fractional_decimator_cc {last_decimation}"]
+                return chain + ["owrx-sonde -r {audio_rate} -t {demodulator}"]
+            else:
+                chain += ["csdr fmdemod_quadri_cf"]
+                if self.last_decimation != 1.0:
+                    chain += ["csdr fractional_decimator_ff {last_decimation}"]
+                return chain + ["csdr convert_f_s16", "owrx-sonde -r {audio_rate} -t {demodulator}"]
         elif which == "pocsag":
             chain += ["csdr fmdemod_quadri_cf"]
             if self.last_decimation != 1.0:
@@ -389,6 +394,7 @@ class dsp(object):
             last_decimation=self.last_decimation,
             audio_rate=self.get_audio_rate(),
             direwolf_config=self.direwolf_config,
+            demodulator=self.secondary_demodulator
         )
 
         logger.debug("secondary command (demod) = %s", secondary_command_demod)
@@ -601,7 +607,7 @@ class dsp(object):
     def isRadiosonde(self, demodulator=None):
         if demodulator is None:
             demodulator = self.get_secondary_demodulator()
-        return demodulator == "radiosonde"
+        return demodulator and demodulator.startswith("radiosonde")
 
     def isPocsag(self, demodulator=None):
         if demodulator is None:
@@ -820,6 +826,7 @@ class dsp(object):
                 unvoiced_quality=self.get_unvoiced_quality(),
                 audio_rate=self.get_audio_rate(),
                 wfm_deemphasis_tau=self.wfm_deemphasis_tau,
+                demodulator=self.demodulator
             )
 
             logger.debug("Command = %s", command)

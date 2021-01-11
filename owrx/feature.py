@@ -79,6 +79,7 @@ class FeatureDetector(object):
         "wsjt-x": ["wsjtx", "sox"],
         "packet": ["direwolf", "sox"],
         "radiosonde": ["radiosonde", "sox"],
+        "radiosonde:rs41": ["radiosonde", "sox"],    ## todo: make check for dependencies of owrx-sonde?
         "pocsag": ["digiham", "sox"],
         "js8call": ["js8", "sox"],
         "drm": ["dream", "sox"],
