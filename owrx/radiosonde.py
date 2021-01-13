@@ -66,10 +66,10 @@ class RadiosondeParser(Parser):
 
     def updateMap(self, mapData):
         logger.debug("updateMap: "+mapData);
-        #maybe add exception handler if format is wrong? TODO
-        sondedata = json.loads(mapData)
-        source = sondedata["Name"]
-        loc = RadiosondeLocation({
+        try:
+            sondedata = json.loads(mapData)
+            source = sondedata["Name"]
+            loc = RadiosondeLocation({
                 "type": "latlon",
                 "lat": sondedata['lat'],
                 "lon": sondedata['long'],
@@ -77,8 +77,10 @@ class RadiosondeParser(Parser):
                 "speed": sondedata['speed'],
                 "course": sondedata['dir'],
                 "symbol": { 'symbol': "O", 'table': "/", 'index': 46, 'tableindex': 0 },
-        })
-        Map.getSharedInstance().updateLocation(source, loc, "Sonde", self.band)
+            })
+            Map.getSharedInstance().updateLocation(source, loc, "Sonde", self.band)
+        except e:
+            logger.debug(e)
 
     def hasCompressedCoordinates(self, raw):
         return raw[0] == "/" or raw[0] == "\\"
