@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import re
 import logging
 import json
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -54,18 +55,20 @@ class RadiosondeParser(Parser):
         if raw[:1] == b'{':
             frame = str(raw, "latin1");
             self.updateMap(frame);
+        elif raw[:1] == b'\n':
+            return
         else:
             frame = {"raw": str(raw, "latin1")}
         logger.debug("data: %s", frame)
         try:
             self.handler.write_radiosonde_data(frame)
-        except e:
-            logger.debug(e)
-        logger.debug("data was writting")
+        except Exception:
+            logger.error("Exception: %s",traceback.format_exc())
+        # logger.debug("data was writting")
 
 
     def updateMap(self, mapData):
-        logger.debug("updateMap: "+mapData);
+        # logger.debug("updateMap: "+mapData);
         try:
             sondedata = json.loads(mapData)
             source = sondedata["Name"]
@@ -79,8 +82,8 @@ class RadiosondeParser(Parser):
                 "symbol": { 'symbol': "O", 'table': "/", 'index': 46, 'tableindex': 0 },
             })
             Map.getSharedInstance().updateLocation(source, loc, "Sonde", self.band)
-        except e:
-            logger.debug(e)
+        except Exception:
+            logger.error("Exception: %s",traceback.format_exc())
 
     def hasCompressedCoordinates(self, raw):
         return raw[0] == "/" or raw[0] == "\\"
