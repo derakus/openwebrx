@@ -161,7 +161,7 @@ DemodulatorPanel.prototype.updatePanels = function() {
     toggle_panel("openwebrx-panel-wsjt-message", ['ft8', 'wspr', 'jt65', 'jt9', 'ft4', 'fst4', 'fst4w'].indexOf(modulation) >= 0);
     toggle_panel("openwebrx-panel-js8-message", modulation == "js8");
     toggle_panel("openwebrx-panel-packet-message", modulation === "packet");
-    toggle_panel("openwebrx-panel-radiosonde-message", modulation.startsWith("radiosonde"));
+    toggle_panel("openwebrx-panel-radiosonde-message", modulation && modulation.startsWith("radiosonde"));
     toggle_panel("openwebrx-panel-pocsag-message", modulation === "pocsag");
 
     modulation = this.getDemodulator().get_modulation();
