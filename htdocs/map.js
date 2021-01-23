@@ -9,7 +9,7 @@
     });
 
     var expectedCallsign;
-    if (query.callsign) expectedCallsign = query.callsign;
+    if (query.callsign) expectedCallsign = decodeURIComponent(query.callsign);
     var expectedLocator;
     if (query.locator) expectedLocator = query.locator;
 
@@ -84,9 +84,22 @@
         }
     };
 
+    $(function(){
+        $('#openwebrx-map-colormode').on('change', function(){
+            colorMode = $(this).val();
+            colorKeys = {};
+            filterRectangles(allRectangles);
+            reColor();
+            updateLegend();
+        });
+    });
+
     var updateLegend = function() {
         var lis = $.map(colorKeys, function(value, key) {
-            return '<li class="square"><span class="illustration" style="background-color:' + chroma(value).alpha(fillOpacity) + ';border-color:' + chroma(value).alpha(strokeOpacity) + ';"></span>' + key + '</li>';
+            // fake rectangle to test if the filter would match
+            var fakeRectangle = Object.fromEntries([[colorMode.slice(2), key]]);
+            var disabled = rectangleFilter(fakeRectangle) ? '' : ' disabled';
+            return '<li class="square' + disabled + '" data-selector="' + key + '"><span class="illustration" style="background-color:' + chroma(value).alpha(fillOpacity) + ';border-color:' + chroma(value).alpha(strokeOpacity) + ';"></span>' + key + '</li>';
         });
         $(".openwebrx-map-legend .content").html('<ul>' + lis.join('') + '</ul>');
     }
@@ -137,14 +150,13 @@
 		    marker.opacity = getScale(update.lastseen);
                     marker.update(); // necessary?
 
-                    // TODO the trim should happen on the server side
-                    if (expectedCallsign && expectedCallsign == update.callsign.trim()) {
+                    if (expectedCallsign && expectedCallsign == update.callsign) {
                         map.panTo(pos);
                         showMarkerInfoWindow(update.callsign, pos);
                         expectedCallsign = false;
                     }
 
-                    if (infowindow && infowindow.callsign && infowindow.callsign == update.callsign.trim()) {
+                    if (infowindow && infowindow.callsign && infowindow.callsign == update.callsign) {
                         showMarkerInfoWindow(infowindow.callsign, pos);
                     }
                 break;
@@ -174,11 +186,17 @@
 		    rectangle.setStyle(opt);
 		    rectangle.addTo(map);
 		    /*
+                    rectangle.lastseen = update.lastseen;
+                    rectangle.locator = update.location.locator;
+                    rectangle.mode = update.mode;
+                    rectangle.band = update.band;
+                    rectangle.center = center;
+
                     rectangle.setOptions($.extend({
                         strokeColor: color,
                         strokeWeight: 2,
                         fillColor: color,
-                        map: map,
+                        map: rectangleFilter(rectangle) ? map : undefined,
                         bounds:{
                             north: lat,
                             south: lat + 1,
@@ -292,6 +310,10 @@
                             var t = L.terminator();
                             t.addTo(map);
                             setInterval(function(){updateTerminator(t)}, 500);
+			    // TODO: mrege this update
+                            //var $legend = $(".openwebrx-map-legend");
+                            //setupLegendFilters($legend);
+                            //map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push($legend[0]);
 
                             if (!receiverMarker) {
 				// for testing
@@ -376,6 +398,8 @@
             });
             */
         }
+        delete infowindow.locator;
+        delete infowindow.callsign;
         return infowindow;
     }
 
@@ -385,7 +409,7 @@
         infowindow.locator = locator;
         var inLocator = $.map(rectangles, function(r, callsign) {
             return {callsign: callsign, locator: r.locator, lastseen: r.lastseen, mode: r.mode, band: r.band}
-        }).filter(function(d) {
+        }).filter(rectangleFilter).filter(function(d) {
             return d.locator == locator;
         }).sort(function(a, b){
             return b.lastseen - a.lastseen;
@@ -478,5 +502,37 @@
             // TODO m.setOptions(getMarkerOpacityOptions(m.lastseen));
         });
     }, 10 /* TODO: set back up to 1000 */);
+
+    var rectangleFilter = allRectangles = function() { return true; };
+
+    var filterRectangles = function(filter) {
+        rectangleFilter = filter;
+        $.each(rectangles, function(_, r) {
+            r.setMap(rectangleFilter(r) ? map : undefined);
+        });
+    };
+
+    var setupLegendFilters = function($legend) {
+        $content = $legend.find('.content');
+        $content.on('click', 'li', function() {
+            var $el = $(this);
+            $lis = $content.find('li');
+            if ($lis.hasClass('disabled') && !$el.hasClass('disabled')) {
+                $lis.removeClass('disabled');
+                filterRectangles(allRectangles);
+            } else {
+                $el.removeClass('disabled');
+                $lis.filter(function() {
+                    return this != $el[0]
+                }).addClass('disabled');
+
+                var key = colorMode.slice(2);
+                var selector = $el.data('selector');
+                filterRectangles(function(r) {
+                    return r[key] === selector;
+                });
+            }
+        });
+    }
 
 })();

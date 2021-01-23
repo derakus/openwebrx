@@ -4,7 +4,7 @@
     This file is part of OpenWebRX,
     an open-source SDR receiver software with a web UI.
     Copyright (c) 2013-2015 by Andras Retzler <randras@sdr.hu>
-    Copyright (c) 2019-2020 by Jakob Ketterl <dd5jfk@darc.de>
+    Copyright (c) 2019-2021 by Jakob Ketterl <dd5jfk@darc.de>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -28,6 +28,8 @@
         <link rel="stylesheet" type="text/css" href="static/lib/nanoscroller.css" />
         <link rel="stylesheet" type="text/css" href="static/css/openwebrx.css" />
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="theme-color" content="#222" />
     </head>
     <body onload="openwebrx_init();">
 <div id="webrx-page-container">
@@ -66,32 +68,28 @@
             <div class="openwebrx-panel openwebrx-message-panel" id="openwebrx-panel-radiosonde-message" style="display: none; width: 619px;" data-panel-name="radiosonde-message"></div>
             <div class="openwebrx-panel openwebrx-message-panel" id="openwebrx-panel-pocsag-message" style="display: none; width: 619px;" data-panel-name="pocsag-message"></div>
             <div class="openwebrx-panel openwebrx-meta-panel" id="openwebrx-panel-metadata-ysf" style="display: none;" data-panel-name="metadata-ysf">
-                <div class="openwebrx-meta-frame">
-                    <div class="openwebrx-meta-slot">
-                        <div class="openwebrx-ysf-mode openwebrx-meta-autoclear"></div>
-                        <div class="openwebrx-meta-user-image"></div>
-                        <div class="openwebrx-ysf-source openwebrx-meta-autoclear"></div>
-                        <div class="openwebrx-ysf-up openwebrx-meta-autoclear"></div>
-                        <div class="openwebrx-ysf-down openwebrx-meta-autoclear"></div>
-                    </div>
+                <div class="openwebrx-meta-slot">
+                    <div class="openwebrx-ysf-mode"></div>
+                    <div class="openwebrx-meta-user-image"></div>
+                    <div class="openwebrx-ysf-source"><span class="location"></span><span class="callsign"></span></div>
+                    <div class="openwebrx-ysf-up"></div>
+                    <div class="openwebrx-ysf-down"></div>
                 </div>
             </div>
             <div class="openwebrx-panel openwebrx-meta-panel" id="openwebrx-panel-metadata-dmr" style="display: none;" data-panel-name="metadata-dmr">
-                <div class="openwebrx-meta-frame">
-                    <div class="openwebrx-meta-slot openwebrx-dmr-timeslot-panel">
-                        <div class="openwebrx-dmr-slot">Timeslot 1</div>
-                        <div class="openwebrx-meta-user-image"></div>
-                        <div class="openwebrx-dmr-id openwebrx-meta-autoclear"></div>
-                        <div class="openwebrx-dmr-name openwebrx-meta-autoclear"></div>
-                        <div class="openwebrx-dmr-target openwebrx-meta-autoclear"></div>
-                    </div>
-                    <div class="openwebrx-meta-slot openwebrx-dmr-timeslot-panel">
-                        <div class="openwebrx-dmr-slot">Timeslot 2</div>
-                        <div class="openwebrx-meta-user-image"></div>
-                        <div class="openwebrx-dmr-id openwebrx-meta-autoclear"></div>
-                        <div class="openwebrx-dmr-name openwebrx-meta-autoclear"></div>
-                        <div class="openwebrx-dmr-target openwebrx-meta-autoclear"></div>
-                    </div>
+                <div class="openwebrx-meta-slot openwebrx-dmr-timeslot-panel">
+                    <div class="openwebrx-dmr-slot">Timeslot 1</div>
+                    <div class="openwebrx-meta-user-image"></div>
+                    <div class="openwebrx-dmr-id"></div>
+                    <div class="openwebrx-dmr-name"></div>
+                    <div class="openwebrx-dmr-target"></div>
+                </div>
+                <div class="openwebrx-meta-slot openwebrx-dmr-timeslot-panel">
+                    <div class="openwebrx-dmr-slot">Timeslot 2</div>
+                    <div class="openwebrx-meta-user-image"></div>
+                    <div class="openwebrx-dmr-id"></div>
+                    <div class="openwebrx-dmr-name"></div>
+                    <div class="openwebrx-dmr-target"></div>
                 </div>
             </div>
             <div class="openwebrx-panel" id="openwebrx-panel-log" data-panel-name="debug" style="width: 619px;">
@@ -133,7 +131,7 @@
                 </div>
                 <div class="openwebrx-modes openwebrx-panel-line"></div>
                 <div class="openwebrx-panel-line">
-                    <div title="Mute on/off" id="openwebrx-mute-off" class="openwebrx-button" onclick="toggleMute();"><span class="sprite sprite-speaker openwebrx-sliderbtn-img"></span></div>
+                    <div title="Mute on/off" class="openwebrx-button openwebrx-mute-button" onclick="toggleMute();"><span class="sprite sprite-speaker openwebrx-sliderbtn-img"></span></div>
                     <input title="Volume" id="openwebrx-panel-volume" class="openwebrx-panel-slider" type="range" min="0" max="150" value="50" step="1" onchange="updateVolume()" oninput="updateVolume()">
                     <div title="Auto-adjust waterfall colors (right-click for continuous)" id="openwebrx-waterfall-colors-auto" class="openwebrx-button"><span class="sprite sprite-waterfall-auto openwebrx-sliderbtn-img"></span></div>
                     <input title="Waterfall minimum level" id="openwebrx-waterfall-color-min" class="openwebrx-panel-slider" type="range" min="-200" max="100" value="50" step="1" onchange="updateWaterfallColors(0);" oninput="updateVolume()">
